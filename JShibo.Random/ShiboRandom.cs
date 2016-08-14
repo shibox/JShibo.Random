@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace JShibo.Random
+namespace JShibo
 {
     /// <summary>
     ///     高性能的随机数生成类，平均比系统的要快8倍
@@ -297,54 +297,6 @@ namespace JShibo.Random
             return (DOUBLE_UNIT_INT * (int)(0x7FFFFFFF & (w = (w ^ (w >> 19)) ^ (t ^ (t >> 8)))));
         }
 
-        public string NextString()
-        {
-            return NextString(Next(0, 200));
-        }
-
-        public string NextString(int size)
-        {
-            int[] ints = new int[size];
-            NextInts(ints, 0, ints.Length);
-            char[] chars = new char[ints.Length];
-            for (int i = 0; i < ints.Length; i++)
-                chars[i] = RAND_LETTER[(ints[i] % RAND_LETTER.Length)];
-            return new string(chars);
-        }
-
-        public string NextAsciiString()
-        {
-            return NextString();
-        }
-
-        public string NextAsciiString(int size)
-        {
-            return NextString(size);
-        }
-
-        public string NextString(string baseString, int size)
-        {
-            return string.Empty;
-        }
-
-        /// <summary>
-        /// 全中文的字符串
-        /// </summary>
-        /// <returns></returns>
-        public string NextChineseString()
-        {
-            return NextString();
-        }
-
-        /// <summary>
-        /// 随机字符串中只包含数字和字母随机数
-        /// </summary>
-        /// <returns></returns>
-        public string NextNumberLetterString()
-        {
-            return NextString();
-        }
-
         /// <summary>
         /// 返回非负随机数。
         /// 如果转换成int，产生的随机数既包含正数，也包含负数，性能比Next方法提高了20%
@@ -392,8 +344,105 @@ namespace JShibo.Random
                 bitMask = 0x80000000;
                 return (bitBuffer & bitMask) == 0;
             }
-
             return (bitBuffer & (bitMask >>= 1)) == 0;
+        }
+
+        #region 字符串相关
+
+        public string NextString()
+        {
+            return NextString(Next(0, 200));
+        }
+
+        public string NextString(int size)
+        {
+            return NextString(RAND_LETTER, size);
+        }
+
+        public string NextAsciiString()
+        {
+            return NextString(RAND_LETTER, 200);
+        }
+
+        public string NextAsciiString(int size)
+        {
+            return NextString(RAND_LETTER, size);
+        }
+
+        public string NextString(string baseString, int size)
+        {
+            int[] ints = new int[size];
+            NextInts(ints, 0, ints.Length);
+            char[] chars = new char[ints.Length];
+            for (int i = 0; i < ints.Length; i++)
+                chars[i] = RAND_LETTER[(ints[i] % RAND_LETTER.Length)];
+            return new string(chars);
+        }
+
+        /// <summary>
+        /// http://ju.outofmemory.cn/entry/53571
+        /// http://www.qqxiuzi.cn/zh/hanzi-unicode-bianma.php
+        /// \u4e00-\u9fa5
+        /// </summary>
+        /// <returns></returns>
+        public string NextChineseString()
+        {
+            char[] chars = new char[200];
+            NextChineseString(chars);
+            return new string(chars);
+        }
+
+        public unsafe void NextChineseString(char[] chars)
+        {
+            int diff = 0x4e00 - 0x9fa5;
+            uint x = this.x, y = this.y, z = this.z, w = this.w;
+            fixed (char* pd = &chars[0])
+            {
+                char* pint = pd;
+                int i = 0, len = chars.Length >> 2;
+                for (; i < len; i++)
+                {
+                    uint t = (x ^ (x << 11));
+                    x = y; y = z; z = w;
+                    *pint++ = (char)((((int)(0x7FFFFFFF & (w = (w ^ (w >> 19)) ^ (t ^ (t >> 8))))) % diff)+ 0x4e00);
+
+                    t = (x ^ (x << 11));
+                    x = y; y = z; z = w;
+                    *pint++ = (char)((((int)(0x7FFFFFFF & (w = (w ^ (w >> 19)) ^ (t ^ (t >> 8))))) % diff) + 0x4e00);
+
+                    t = (x ^ (x << 11));
+                    x = y; y = z; z = w;
+                    *pint++ = (char)((((int)(0x7FFFFFFF & (w = (w ^ (w >> 19)) ^ (t ^ (t >> 8))))) % diff) + 0x4e00);
+
+                    t = (x ^ (x << 11));
+                    x = y; y = z; z = w;
+                    *pint++ = (char)((((int)(0x7FFFFFFF & (w = (w ^ (w >> 19)) ^ (t ^ (t >> 8))))) % diff) + 0x4e00);
+                }
+                int leave = chars.Length - (len << 2);
+                for (i = 0; i < leave; i++)
+                {
+                    uint t = (x ^ (x << 11));
+                    x = y; y = z; z = w;
+                    *pint++ = (char)((((int)(0x7FFFFFFF & (w = (w ^ (w >> 19)) ^ (t ^ (t >> 8))))) % diff) + 0x4e00);
+                }
+            }
+            this.x = x; this.y = y; this.z = z; this.w = w;
+        }
+
+        public char[] NextChineseChars()
+        {
+            char[] chars = new char[200];
+             NextChineseString(chars);
+            return chars;
+        }
+
+        /// <summary>
+        /// 随机字符串中只包含数字和字母随机数
+        /// </summary>
+        /// <returns></returns>
+        public string NextNumberLetterString()
+        {
+            return NextString();
         }
 
         public unsafe void GetRandomCharsFast(char[] buffer)
@@ -435,6 +484,10 @@ namespace JShibo.Random
 
         #endregion
 
+
+
+        #endregion
+
         #region 基本类型 数组
 
         public unsafe byte[] NextBytes(int size)
@@ -459,7 +512,6 @@ namespace JShibo.Random
         public unsafe void NextBytes(byte[] buffer, int offset, int count)
         {
             uint x = this.x, y = this.y, z = this.z, w = this.w;
-
             fixed (byte* pd = &buffer[offset])
             {
                 byte* tpd = pd;
@@ -954,8 +1006,6 @@ namespace JShibo.Random
             return result;
         }
 
-        #endregion
-
         /// <summary>
         /// 随机选择数据
         /// </summary>
@@ -963,7 +1013,7 @@ namespace JShibo.Random
         /// <param name="values">值</param>
         /// <param name="count">选择数据的数量</param>
         /// <returns></returns>
-        public static T[] RandomSelect<T>(IList<T> values, int count)
+        public static T[] Select<T>(IList<T> values, int count)
         {
             int[] ints = GetRandomInts(0, values.Count - 1, count);
             T[] result = new T[count];
@@ -971,6 +1021,10 @@ namespace JShibo.Random
                 result[i] = values[ints[i]];
             return result;
         }
+
+        #endregion
+
+
     }
 
     public sealed class ShiboRandom<T>
